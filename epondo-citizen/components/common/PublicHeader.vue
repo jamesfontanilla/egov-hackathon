@@ -11,27 +11,20 @@
         <!-- Desktop Nav -->
         <nav class="hidden md:flex items-center gap-6">
           <NuxtLink to="/projects" class="text-gray-600 hover:text-primary-500 font-medium transition-colors">
-            {{ t('nav.projects') }}
+            Projects
           </NuxtLink>
           <NuxtLink to="/report" class="text-gray-600 hover:text-primary-500 font-medium transition-colors">
-            {{ t('nav.report') }}
+            Report
           </NuxtLink>
           <NuxtLink to="/assistant" class="text-gray-600 hover:text-primary-500 font-medium transition-colors">
-            {{ t('nav.assistant') }}
+            AI Assistant
           </NuxtLink>
           <NuxtLink
-            v-if="!authStore.isLoggedIn"
             to="/login"
             class="bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition-colors font-medium"
           >
-            {{ t('nav.login') }}
+            Login
           </NuxtLink>
-          <div v-else class="flex items-center gap-2">
-            <span class="text-sm text-gray-600">{{ authStore.user?.firstName }}</span>
-            <button @click="authStore.logout()" class="text-sm text-red-500 hover:text-red-700">
-              Logout
-            </button>
-          </div>
         </nav>
 
         <!-- Mobile menu button -->
@@ -46,21 +39,20 @@
       <!-- Mobile menu -->
       <div v-if="mobileMenuOpen" class="md:hidden pb-4 space-y-2">
         <NuxtLink to="/projects" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded" @click="mobileMenuOpen = false">
-          {{ t('nav.projects') }}
+          Projects
         </NuxtLink>
         <NuxtLink to="/report" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded" @click="mobileMenuOpen = false">
-          {{ t('nav.report') }}
+          Report
         </NuxtLink>
         <NuxtLink to="/assistant" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded" @click="mobileMenuOpen = false">
-          {{ t('nav.assistant') }}
+          AI Assistant
         </NuxtLink>
         <NuxtLink
-          v-if="!authStore.isLoggedIn"
           to="/login"
           class="block px-3 py-2 bg-primary-500 text-white rounded text-center"
           @click="mobileMenuOpen = false"
         >
-          {{ t('nav.login') }}
+          Login
         </NuxtLink>
       </div>
     </div>
@@ -68,10 +60,5 @@
 </template>
 
 <script setup lang="ts">
-import { useAuthStore } from '~/stores/auth.store';
-import { useTranslator } from '~/composables/useTranslator';
-
-const authStore = useAuthStore();
-const { t } = useTranslator();
 const mobileMenuOpen = ref(false);
 </script>

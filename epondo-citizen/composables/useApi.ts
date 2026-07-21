@@ -2,7 +2,6 @@ import axios, { type AxiosInstance } from 'axios';
 
 export function useApi() {
   const config = useRuntimeConfig();
-  const authStore = useAuthStore();
 
   const client: AxiosInstance = axios.create({
     baseURL: config.public.apiBase as string,
@@ -11,22 +10,33 @@ export function useApi() {
     },
   });
 
-  // Add auth token to requests
+  // Add auth token to requests (only if available)
   client.interceptors.request.use((reqConfig) => {
-    const token = authStore.token;
-    if (token) {
-      reqConfig.headers.Authorization = `Bearer ${token}`;
+    if (import.meta.client) {
+      const token = localStorage.getItem('epondo_token');
+      if (token) {
+        reqConfig.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return reqConfig;
   });
 
-  // Handle 401 responses
+  // Handle 401 responses — only redirect if on a protected page
   client.interceptors.response.use(
     (response) => response,
     (error) => {
-      if (error.response?.status === 401) {
-        authStore.logout();
-        navigateTo('/login');
+      if (error.response?.status === 401 && import.meta.client) {
+        // Only redirect to login if the current page requires auth
+        // Don't redirect on public pages like /projects
+        const currentPath = window.location.pathname;
+        const publicPaths = ['/', '/projects', '/about', '/login', '/callback'];
+        const isPublicPage = publicPaths.some(p => currentPath === p || currentPath.startsWith('/projects/'));
+
+        if (!isPublicPage) {
+          localStorage.removeItem('epondo_token');
+          localStorage.removeItem('epondo_user');
+          navigateTo('/login');
+        }
       }
       return Promise.reject(error);
     }
@@ -34,6 +44,3 @@ export function useApi() {
 
   return { client };
 }
-
-// Import store here to avoid circular dependency at module level
-import { useAuthStore } from '~/stores/auth.store';

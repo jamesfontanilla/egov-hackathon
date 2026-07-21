@@ -25,6 +25,7 @@ export const config = {
     baseUrl: process.env.EVERIFY_BASE_URL || '',
     clientId: process.env.EVERIFY_CLIENT_ID || '',
     clientSecret: process.env.EVERIFY_CLIENT_SECRET || '',
+    pubkey: process.env.EVERIFY_PUBKEY || '',
   },
 
   faceLiveness: {
@@ -45,7 +46,7 @@ export const config = {
 
   ereport: {
     baseUrl: process.env.EREPORT_BASE_URL || '',
-    accessCode: process.env.EREPORT_ACCESS_CODE || '',
+    accessToken: process.env.EREPORT_ACCESS_TOKEN || '',
   },
 
   egovai: {

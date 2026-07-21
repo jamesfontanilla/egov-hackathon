@@ -9,6 +9,16 @@ export default defineNuxtConfig({
     '@vite-pwa/nuxt',
   ],
 
+  components: {
+    dirs: [
+      { path: '~/components', pathPrefix: false },
+    ],
+  },
+
+  devServer: {
+    port: 3001,
+  },
+
   runtimeConfig: {
     public: {
       apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:3000',
@@ -40,6 +50,9 @@ export default defineNuxtConfig({
       ],
       link: [
         { rel: 'stylesheet', href: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css' },
+      ],
+      script: [
+        { src: 'https://hackathon-everify-face-liveness.e.gov.ph/js/everify-liveness-sdk.min.js', defer: true },
       ],
     },
   },

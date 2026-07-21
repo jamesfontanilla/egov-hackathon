@@ -41,6 +41,17 @@ export class EverifyService {
   private cachedToken: string | null = null;
   private tokenExpiresAt: number = 0;
 
+  /**
+   * Get the pubkey used by the frontend Face Liveness SDK.
+   * The frontend calls window.eKYC().start({ pubkey }) with this value.
+   */
+  getPubkey(): string {
+    return config.everify.pubkey;
+  }
+
+  /**
+   * Authenticate with eVerify API to get an access token.
+   */
   async getAccessToken(): Promise<string> {
     if (this.cachedToken && Date.now() / 1000 < this.tokenExpiresAt - 60) {
       return this.cachedToken;
@@ -57,6 +68,16 @@ export class EverifyService {
     return this.cachedToken;
   }
 
+  /**
+   * Verify citizen identity using personal info + face liveness session.
+   * 
+   * Flow:
+   * 1. Frontend loads SDK: <script src="https://hackathon-everify-face-liveness.e.gov.ph/js/everify-liveness-sdk.min.js">
+   * 2. Frontend calls: window.eKYC().start({ pubkey: "..." })
+   * 3. On success, frontend gets: { status: "COMPLETED", result: { photo, session_id, photo_url } }
+   * 4. Frontend sends session_id + personal info to this backend endpoint
+   * 5. Backend calls eVerify /api/query with face_liveness_session_id
+   */
   async verifyPersonalInfo(params: VerifyPersonalInfoRequest): Promise<EverifyResult> {
     const token = await this.getAccessToken();
     const response = await axios.post(`${this.baseUrl}/api/query`, params, {
@@ -65,6 +86,9 @@ export class EverifyService {
     return response.data.data;
   }
 
+  /**
+   * Verify using PhilSys QR code (check if QR is valid first).
+   */
   async qrCheck(qrValue: string): Promise<any> {
     const token = await this.getAccessToken();
     const response = await axios.post(
@@ -75,6 +99,9 @@ export class EverifyService {
     return response.data.data;
   }
 
+  /**
+   * Verify using PhilSys QR code + face liveness session.
+   */
   async qrVerify(qrValue: string, livenessSessionId: string): Promise<EverifyResult> {
     const token = await this.getAccessToken();
     const response = await axios.post(

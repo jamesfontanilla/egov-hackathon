@@ -4,9 +4,17 @@
       <div class="mb-6">
         <span class="text-5xl">🇵🇭</span>
         <h1 class="text-2xl font-bold text-gray-800 mt-4">Login to ePondo</h1>
-        <p class="text-gray-500 mt-2">Sign in with your eGovPH account to file reports and access the AI assistant.</p>
+        <p class="text-gray-500 mt-2">
+          Sign in with your eGovPH account to file reports and access the AI assistant.
+        </p>
       </div>
 
+      <!-- Error message -->
+      <div v-if="errorMessage" class="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
+        {{ errorMessage }}
+      </div>
+
+      <!-- eGovPH SSO Login Button -->
       <button
         @click="handleLogin"
         class="w-full bg-primary-500 text-white py-3 px-6 rounded-lg font-semibold hover:bg-primary-600 transition-colors flex items-center justify-center gap-2"
@@ -18,7 +26,8 @@
       </button>
 
       <p class="text-xs text-gray-400 mt-6">
-        By logging in, you agree to the ePondo terms of service. Your identity is verified through the Philippine national digital ID system.
+        By logging in, you are authenticated through the Philippine government's eGovPH Single Sign-On system.
+        No separate registration needed.
       </p>
 
       <div class="mt-6 pt-6 border-t border-gray-200">
@@ -33,10 +42,29 @@
 
 <script setup lang="ts">
 import { useAuth } from '~/composables/useAuth';
+import { useAuthStore } from '~/stores/auth.store';
 
 definePageMeta({ layout: 'default' });
 
+const route = useRoute();
 const { loginWithEGov } = useAuth();
+const authStore = useAuthStore();
+
+// Redirect if already logged in
+onMounted(() => {
+  authStore.loadFromStorage();
+  if (authStore.isLoggedIn) {
+    navigateTo('/');
+  }
+});
+
+const errorMessage = computed(() => {
+  const error = route.query.error as string;
+  if (error === 'auth_failed') return 'Authentication failed. Please try again.';
+  if (error === 'no_code') return 'No authentication code received. Please try again.';
+  if (error === 'parse_error') return 'Error processing login response.';
+  return '';
+});
 
 function handleLogin() {
   loginWithEGov();

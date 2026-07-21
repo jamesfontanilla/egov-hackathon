@@ -82,7 +82,7 @@ const selectedBarangay = ref('');
 async function loadRegions() {
   try {
     const data = await getRegions();
-    regions.value = data.regions || data || [];
+    regions.value = parseJsonApiList(data);
   } catch (e) {
     console.error('Error loading regions:', e);
   }
@@ -99,7 +99,7 @@ async function onRegionChange() {
   if (selectedRegion.value) {
     try {
       const data = await getProvinces(selectedRegion.value);
-      provinces.value = data.provinces || data || [];
+      provinces.value = parseJsonApiList(data);
     } catch (e) {
       console.error('Error loading provinces:', e);
     }
@@ -115,7 +115,7 @@ async function onProvinceChange() {
   if (selectedProvince.value) {
     try {
       const data = await getMunicipalities(selectedProvince.value);
-      municipalities.value = data.municipalities || data || [];
+      municipalities.value = parseJsonApiList(data);
     } catch (e) {
       console.error('Error loading municipalities:', e);
     }
@@ -129,11 +129,31 @@ async function onMunicipalityChange() {
   if (selectedMunicipality.value) {
     try {
       const data = await getBarangays(selectedMunicipality.value);
-      barangays.value = data.barangays || data || [];
+      barangays.value = parseJsonApiList(data);
     } catch (e) {
       console.error('Error loading barangays:', e);
     }
   }
+}
+
+// Parse JSON:API format: { data: [{ type, id, attributes: { name } }] }
+// into flat array: [{ code, name }]
+function parseJsonApiList(response: any): { code: string; name: string }[] {
+  // JSON:API format from eReport
+  if (response?.data && Array.isArray(response.data)) {
+    return response.data.map((item: any) => ({
+      code: item.id || item.code,
+      name: item.attributes?.name || item.name || item.id,
+    }));
+  }
+  // Already flat array
+  if (Array.isArray(response)) {
+    return response.map((item: any) => ({
+      code: item.code || item.id,
+      name: item.name || item.attributes?.name || '',
+    }));
+  }
+  return [];
 }
 
 function onBarangayChange() {

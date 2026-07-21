@@ -6,6 +6,20 @@ import { config } from '../config/env.js';
 import { logAudit } from '../logic/audit.js';
 
 export async function identityRoutes(app: FastifyInstance) {
+  // GET /api/identity/liveness/pubkey - Get the pubkey for the Face Liveness Web SDK
+  // The frontend uses this to call: window.eKYC().start({ pubkey })
+  app.get('/api/identity/liveness/pubkey', {
+    preHandler: [authMiddleware],
+  }, async (request, reply) => {
+    return reply.send({
+      success: true,
+      data: {
+        pubkey: everifyService.getPubkey(),
+        sdk_url: 'https://hackathon-everify-face-liveness.e.gov.ph/js/everify-liveness-sdk.min.js',
+      },
+    });
+  });
+
   // POST /api/identity/liveness/create - Create Face Liveness session
   app.post('/api/identity/liveness/create', {
     preHandler: [authMiddleware],
