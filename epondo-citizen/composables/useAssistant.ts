@@ -36,7 +36,10 @@ export function useAssistant() {
         category: 'PH',
       });
 
-      let responseContent = aiResponse.response || aiResponse.result || aiResponse.answer || '';
+      // Backend returns: { success, data: { ...eGovAI response } }
+      // eGovAI response might have: response, result, answer, data, or content field
+      const aiData = aiResponse.data || aiResponse;
+      let responseContent = aiData.response || aiData.result || aiData.answer || aiData.data || aiData.content || aiData.message || JSON.stringify(aiData);
 
       // 5. Translate response back if Filipino
       if (chatStore.language === 'fil' && responseContent) {
@@ -87,7 +90,8 @@ export function useAssistant() {
         category: 'PH',
       });
 
-      let responseContent = data.response || data.result || data.answer || '';
+      const aiData = data.data || data;
+      let responseContent = aiData.response || aiData.result || aiData.answer || aiData.data || aiData.content || aiData.message || JSON.stringify(aiData);
 
       if (chatStore.language === 'fil' && responseContent) {
         const { data: translatedBack } = await client.post('/api/ai/translate', {

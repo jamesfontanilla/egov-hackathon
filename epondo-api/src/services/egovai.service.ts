@@ -36,7 +36,7 @@ export class EgovAiService {
   async aiAssistant(prompt: string, category: string = 'PH'): Promise<any> {
     const headers = await this.authHeaders();
     const response = await axios.post(
-      `${this.baseUrl}/api/v1/egov/integration/ai.assistant/generate`,
+      `${this.baseUrl}/api/v1/egov/integration/ai_assistant/generate`,
       { prompt, category },
       { headers }
     );
@@ -46,7 +46,7 @@ export class EgovAiService {
   async lawsAndRegulations(prompt: string, category: string = 'PH'): Promise<any> {
     const headers = await this.authHeaders();
     const response = await axios.post(
-      `${this.baseUrl}/api/v1/egov/integration/laws.and.regulations/generate`,
+      `${this.baseUrl}/api/v1/egov/integration/laws_and_regulations/generate`,
       { prompt, category },
       { headers }
     );
