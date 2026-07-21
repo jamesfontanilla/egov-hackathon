@@ -12,6 +12,7 @@ import { aiRoutes } from './routes/ai.routes.js';
 import { reportRoutes } from './routes/report.routes.js';
 import { auditRoutes } from './routes/audit.routes.js';
 import { notificationRoutes } from './routes/notification.routes.js';
+import { publicRoutes } from './routes/public.routes.js';
 
 async function main() {
   const app = Fastify({
@@ -53,6 +54,7 @@ async function main() {
   await app.register(reportRoutes);
   await app.register(auditRoutes);
   await app.register(notificationRoutes);
+  await app.register(publicRoutes);
 
   // Global error handler
   app.setErrorHandler((error, request, reply) => {

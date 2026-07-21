@@ -115,19 +115,10 @@ async function fetchBarangayData() {
   loading.value = true;
   try {
     const barangayCode = route.params.barangay as string;
-    const { data } = await client.get('/api/budgets', {
-      params: { barangay_code: barangayCode, public: true },
-    });
-    // Process the response
-    if (data.budget) {
-      barangayData.value = data.budget;
-      disbursements.value = data.budget.disbursements || [];
-    } else if (Array.isArray(data)) {
-      barangayData.value = data[0] || {};
-      disbursements.value = data[0]?.disbursements || [];
-    } else {
-      barangayData.value = data;
-      disbursements.value = data.disbursements || [];
+    const { data } = await client.get(`/api/public/barangay/${barangayCode}`);
+    if (data.success) {
+      barangayData.value = data.data;
+      disbursements.value = data.data.disbursements || [];
     }
   } catch (e) {
     console.error('Error fetching barangay data:', e);

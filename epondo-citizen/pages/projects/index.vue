@@ -61,13 +61,9 @@ const loading = ref(false);
 async function fetchProjects() {
   loading.value = true;
   try {
-    const { data } = await client.get('/api/budgets', {
-      params: { status: 'OPERATIVE,ARCHIVED', public: 'true' },
-    });
-    projects.value = data.data || data.budgets || [];
+    const { data } = await client.get('/api/public/projects');
+    projects.value = data.data || [];
   } catch (e: any) {
-    // Don't crash on auth errors — projects page is public
-    // Budget data just won't show until user logs in
     console.error('Error fetching projects:', e.message);
     projects.value = [];
   } finally {

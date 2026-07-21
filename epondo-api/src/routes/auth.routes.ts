@@ -25,6 +25,26 @@ interface UserRow {
   is_active: boolean;
 }
 
+// Development-only fallback so the demo account can authenticate without a
+// running PostgreSQL instance. This branch is explicitly disabled in production.
+const DEMO_EMAIL = 'demo@epondo.local';
+const DEMO_PASSWORD_HASH =
+  'scrypt$epondo-demo-salt$ea734dc1b8da42bcaa1d68270bae350525551729fb8a2d5985592ca9a2ca13afb01aad2d96f3f4c047378922f289e75387cfc34d0173720346c7887835a20175';
+const DEMO_USER: UserRow = {
+  id: '00000000-0000-4000-8000-000000000001',
+  email: DEMO_EMAIL,
+  password_hash: DEMO_PASSWORD_HASH,
+  first_name: 'Demo',
+  middle_name: null,
+  last_name: 'Citizen',
+  role: 'CITIZEN',
+  barangay_psgc: null,
+  municipality_psgc: null,
+  mobile: null,
+  gender: null,
+  is_active: true,
+};
+
 function normalizeEmail(value: unknown): string {
   return typeof value === 'string' ? value.trim().toLowerCase() : '';
 }
@@ -196,6 +216,12 @@ export async function authRoutes(app: FastifyInstance) {
     const password = typeof body.password === 'string' ? body.password : '';
 
     if (!email || !password) return invalidCredentials(reply);
+
+    // Keep the local demo path fast and independent from PostgreSQL.
+    if (config.nodeEnv === 'development' && email === DEMO_EMAIL && await verifyPassword(password, DEMO_PASSWORD_HASH)) {
+      const token = issueToken(DEMO_USER);
+      return reply.send({ success: true, data: { token, user: toAuthUser(DEMO_USER) } });
+    }
 
     try {
       const user = await db<UserRow>('users').where({ email }).first();
