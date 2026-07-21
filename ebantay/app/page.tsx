@@ -1,65 +1,73 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+import { FormEvent, useMemo, useState } from "react";
+
+type Screen = "overview" | "budgets" | "disbursements" | "compass" | "audit" | "notifications";
+type Role = "TREASURER" | "CBO_AUDITOR";
+
+const pesos = (value: number) =>
+  new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", maximumFractionDigits: 0 }).format(value);
+
+const Icon = ({ name, size = 20 }: { name: string; size?: number }) => {
+  const paths: Record<string, React.ReactNode> = {
+    grid: <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
+    wallet: <><path d="M4 7.5V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2V7.5Z"/><path d="M4 7.5h16v6H16a2 2 0 0 1 0-4h4"/><circle cx="16" cy="10.5" r=".6" fill="currentColor"/></>,
+    receipt: <><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z"/><path d="M9 8h6M9 12h6M9 16h3"/></>,
+    chart: <><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></>,
+    shield: <path d="M12 3 20 6v5c0 5.2-3.4 8.5-8 10-4.6-1.5-8-4.8-8-10V6l8-3Z"/>,
+    bell: <><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></>,
+    search: <><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/></>,
+    plus: <path d="M12 5v14M5 12h14"/>,
+    arrow: <path d="M5 12h14m-6-6 6 6-6 6"/>,
+    check: <path d="m5 12 4.2 4.2L19 6.5"/>,
+    more: <path d="M5 12h.01M12 12h.01M19 12h.01"/>,
+    menu: <path d="M4 7h16M4 12h16M4 17h16"/>,
+    close: <path d="m6 6 12 12M18 6 6 18"/>,
+    upload: <><path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M5 15v4h14v-4"/></>,
+    logout: <><path d="M10 5H5v14h5M14 8l4 4-4 4M18 12H9"/></>,
+  };
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
+};
+
+function Progress({ value, color = "blue" }: { value: number; color?: string }) {
+  return <div className="progress"><span className={color} style={{ width: `${Math.min(value, 100)}%` }} /></div>;
 }
+
+function Overview({ role, setScreen }: { role: Role; setScreen: (s: Screen) => void }) {
+  if (role === "CBO_AUDITOR") return <CboOverview setScreen={setScreen} />;
+  const activity = [
+    ["Budget FY 2026 saved as draft", "Today, 10:42 AM", "Draft saved"],
+    ["Voucher uploaded for Barangay Health Day", "Yesterday, 3:18 PM", "Document processed"],
+    ["Disbursement approved by Captain Reyes", "July 18, 11:20 AM", "Approved"],
+  ];
+  return <>
+    <section className="welcome"><div><p className="eyebrow">BARANGAY POBLACION · FY 2026</p><h1>Magandang araw, Maria!</h1><p className="subtext">Here&apos;s your barangay&apos;s financial overview.</p></div><button className="primary" onClick={() => setScreen("budgets")}><Icon name="plus" size={17}/> Create budget</button></section>
+    <section className="metric-grid">
+      <article className="metric budget"><div className="metric-icon"><Icon name="wallet"/></div><p>ACTIVE BUDGET</p><h2>{pesos(2500000)}</h2><span className="status gray">DRAFT</span><small>Fiscal year 2026</small></article>
+      <article className="metric"><div className="metric-icon blue"><Icon name="chart"/></div><p>SK FUND</p><h2>{pesos(180000)} <em>of {pesos(250000)}</em></h2><Progress value={72} color="gold"/><small>72% of allocation used</small></article>
+      <article className="metric"><div className="metric-icon orange"><Icon name="shield"/></div><p>CALAMITY FUND</p><h2>{pesos(45000)} <em>of {pesos(125000)}</em></h2><Progress value={36} color="green"/><small>36% of allocation used</small></article>
+      <article className="metric"><div className="metric-icon purple"><Icon name="receipt"/></div><p>PENDING ACTIONS</p><h2>03</h2><small>2 submissions · 1 approval</small></article>
+    </section>
+    <section className="content-grid"><article className="panel quick"><div className="panel-heading"><div><p className="eyebrow">GET STARTED</p><h3>Quick actions</h3></div></div><div className="action-row"><button onClick={() => setScreen("budgets")}><span className="action-icon"><Icon name="plus"/></span><b>Create a budget</b><small>Plan your annual funds</small></button><button onClick={() => setScreen("disbursements")}><span className="action-icon"><Icon name="receipt"/></span><b>New disbursement</b><small>Record an expense</small></button><button><span className="action-icon"><Icon name="upload"/></span><b>Upload document</b><small>Extract voucher details</small></button></div></article>
+    <article className="panel activity"><div className="panel-heading"><div><p className="eyebrow">LATEST UPDATES</p><h3>Recent activity</h3></div><button className="text-button" onClick={() => setScreen("audit")}>View audit trail <Icon name="arrow" size={15}/></button></div><div className="activity-list">{activity.map(([title, time, tag], i) => <div className="activity-item" key={title}><span className={`dot ${i === 2 ? "green-dot" : ""}`} /><div><b>{title}</b><p>{time}</p></div><span className={`status ${i === 2 ? "green-status" : "gray"}`}>{tag}</span></div>)}</div></article></section>
+  </>;
+}
+
+function CboOverview({ setScreen }: { setScreen: (s: Screen) => void }) {
+  return <><section className="welcome"><div><p className="eyebrow">CITY BUDGET OFFICE · SAN FERNANDO</p><h1>Good morning, Antonio!</h1><p className="subtext">Review barangay budgets and keep your city compliant.</p></div><button className="outline" onClick={() => setScreen("compass")}><Icon name="chart" size={17}/> COMPASS data</button></section><section className="metric-grid four"><article className="metric"><p>TOTAL BARANGAY BUDGETS</p><h2>32</h2><small>Across 18 barangays</small></article><article className="metric"><p>PENDING REVIEW</p><h2 className="amber-text">05</h2><small>Requires your action</small></article><article className="metric"><p>OPERATIVE BUDGETS</p><h2 className="green-text">20</h2><small>62.5% of total</small></article><article className="metric"><p>MACRO CEILING</p><h2>{pesos(48.6e6)}</h2><small>FY 2026 allocation</small></article></section><section className="content-grid"><article className="panel reviews"><div className="panel-heading"><div><p className="eyebrow">REQUIRES ATTENTION</p><h3>Pending reviews</h3></div><button className="text-button" onClick={() => setScreen("budgets")}>View all <Icon name="arrow" size={15}/></button></div>{[["Barangay Poblacion", "FY 2026", "₱2,500,000", "2 hours ago"],["Barangay San Jose", "FY 2026", "₱1,800,000", "5 hours ago"],["Barangay Del Pilar", "FY 2026", "₱3,200,000", "Yesterday"]].map(x => <div className="review-row" key={x[0]}><span className="barangay-avatar">{x[0].split(" ").at(-1)?.[0]}</span><div><b>{x[0]}</b><p>{x[1]} · {x[3]}</p></div><strong>{x[2]}</strong><button className="small-button">Review</button></div>)}</article><article className="panel compliance"><p className="eyebrow">CITY-WIDE OVERVIEW</p><h3>Budget compliance</h3><div className="donut-wrap"><div className="donut"><span><b>32</b><small>budgets</small></span></div><div className="legend"><p><i className="green-bg"/> Operative <b>20</b></p><p><i className="yellow-bg"/> Submitted <b>5</b></p><p><i className="gray-bg"/> Draft <b>4</b></p><p><i className="blue-bg"/> Archived <b>3</b></p></div></div></article></section></>;
+}
+
+function Budgets() {
+  const [showForm, setShowForm] = useState(false); const [nta, setNta] = useState(1800000); const [rpt, setRpt] = useState(450000); const [fees, setFees] = useState(250000);
+  const total = nta + rpt + fees;
+  if (showForm) return <><section className="page-title"><button className="back" onClick={() => setShowForm(false)}>← Back to budgets</button><h1>Create FY 2026 budget</h1><p>Enter the expected revenue for your barangay.</p></section><section className="form-layout"><form className="panel form-panel" onSubmit={(e: FormEvent) => { e.preventDefault(); setShowForm(false); }}><h3>Revenue estimates</h3><label>Fiscal year<select defaultValue="2026"><option>2026</option><option>2027</option></select></label><label>Estimated National Tax Allotment (NTA)<div className="currency"><span>₱</span><input value={nta} type="number" onChange={e => setNta(Number(e.target.value))}/></div></label><label>Estimated City RPT Share<div className="currency"><span>₱</span><input value={rpt} type="number" onChange={e => setRpt(Number(e.target.value))}/></div></label><label>Estimated Local Fees<div className="currency"><span>₱</span><input value={fees} type="number" onChange={e => setFees(Number(e.target.value))}/></div></label><button className="primary submit">Save as draft <Icon name="arrow" size={16}/></button></form><aside className="panel calculation"><p className="eyebrow">LIVE CALCULATION</p><h3>Budget allocation preview</h3><div className="total-line"><span>Total approved budget</span><b>{pesos(total)}</b></div><div className="calc-line"><span>SK allocation ceiling <small>10% of total</small></span><b>{pesos(total * .1)}</b></div><div className="calc-line"><span>Calamity allocation ceiling <small>5% of total</small></span><b>{pesos(total * .05)}</b></div><div className="calc-line available"><span>General fund available <small>85% of total</small></span><b>{pesos(total * .85)}</b></div><p className="hint">These statutory allocations are calculated automatically according to the Local Government Code.</p></aside></section></>;
+  return <><section className="page-title inline-title"><div><p className="eyebrow">FINANCIAL PLANNING</p><h1>Barangay budgets</h1><p>Create, submit, and monitor annual budget allocations.</p></div><button className="primary" onClick={() => setShowForm(true)}><Icon name="plus" size={17}/> Create budget</button></section><section className="panel table-panel"><div className="table-tools"><div className="search"><Icon name="search" size={17}/><input placeholder="Search budgets"/></div><button className="filter">All statuses⌄</button></div><div className="table-wrap"><table><thead><tr><th>FISCAL YEAR</th><th>TOTAL BUDGET</th><th>SK FUND</th><th>CALAMITY FUND</th><th>STATUS</th><th>UPDATED</th><th/></tr></thead><tbody>{[["2026",2500000,"DRAFT","Today, 10:42 AM"],["2025",2300000,"OPERATIVE","Jul 12, 2025"],["2024",2100000,"ARCHIVED","Dec 31, 2024"]].map(([year,total,status,date]) => <tr key={String(year)}><td><b>FY {year}</b></td><td>{pesos(Number(total))}</td><td>{pesos(Number(total)*.1)}</td><td>{pesos(Number(total)*.05)}</td><td><span className={`status ${String(status).toLowerCase()}`}>{String(status)}</span></td><td>{date}</td><td><button className="icon-button"><Icon name="more"/></button></td></tr>)}</tbody></table></div></section></>;
+}
+
+function Disbursements() { const [category, setCategory] = useState("SK Fund"); const [showForm, setShowForm] = useState(false); if (showForm) return <section className="form-layout single"><form className="panel form-panel" onSubmit={e => {e.preventDefault();setShowForm(false)}}><button className="back" type="button" onClick={()=>setShowForm(false)}>← Back to disbursements</button><h2>Record disbursement</h2><label>Project name<input placeholder="e.g. Barangay Health Day" required/></label><label>Project description<textarea placeholder="Describe the project and purpose"/></label><label>Fund category<select value={category} onChange={e=>setCategory(e.target.value)}><option>SK Fund</option><option>Calamity Fund</option><option>General Fund</option></select></label><label>Amount<div className="currency"><span>₱</span><input type="number" placeholder="0.00" required/></div></label><p className="fund-note">Remaining {category} ceiling: <b>{category === "SK Fund" ? pesos(70000) : pesos(80000)}</b></p><label>Payee / supplier name<input placeholder="Supplier or organization name"/></label><label>Voucher document <span className="dropzone"><Icon name="upload"/> Drop a JPEG, PNG, or PDF here <button type="button">Browse files</button></span></label><button className="primary submit">Continue to verification <Icon name="arrow" size={16}/></button></form><aside className="panel calculation"><p className="eyebrow">IDENTITY PROTECTION</p><h3>Your record is secure</h3><p className="subtext">Before submitting, you&apos;ll complete a quick face liveness check and eVerify confirmation.</p><div className="verify-card"><span>1</span><div><b>Face liveness</b><p>Confirm it&apos;s really you</p></div></div><div className="verify-card"><span>2</span><div><b>eVerify identity</b><p>Match your official profile</p></div></div></aside></section>;
+return <><section className="page-title inline-title"><div><p className="eyebrow">EXPENSE MANAGEMENT</p><h1>Disbursements</h1><p>Track project expenses and fund utilization.</p></div><button className="primary" onClick={()=>setShowForm(true)}><Icon name="plus" size={17}/> New disbursement</button></section><section className="fund-grid">{[["SK Fund",180000,250000,"gold"],["Calamity Fund",45000,125000,"green"],["General Fund",1235000,2125000,"blue"]].map(([name,spent,ceiling,color])=><article className="panel fund-card" key={String(name)}><p>{name}</p><h3>{pesos(Number(spent))} <em>of {pesos(Number(ceiling))}</em></h3><Progress value={Number(spent)/Number(ceiling)*100} color={String(color)}/><small>{Math.round(Number(spent)/Number(ceiling)*100)}% utilized · {pesos(Number(ceiling)-Number(spent))} remaining</small></article>)}</section><section className="panel table-panel"><div className="table-tools"><h3>Recent disbursements</h3><button className="filter">All fund categories⌄</button></div><div className="table-wrap"><table><thead><tr><th>PROJECT</th><th>FUND CATEGORY</th><th>PAYEE</th><th>AMOUNT</th><th>STATUS</th><th>DATE</th></tr></thead><tbody>{[["Barangay Health Day","General Fund","MediCare Supplies",125000,"APPROVED","Jul 18, 2026"],["Youth Sports League","SK Fund","Poblacion Sports Assoc.",75000,"PENDING","Jul 17, 2026"],["Emergency Food Packs","Calamity Fund","Golden Harvest Trading",45000,"APPROVED","Jul 10, 2026"]].map(x=><tr key={x[0] as string}><td><b>{x[0]}</b></td><td>{x[1]}</td><td>{x[2]}</td><td>{pesos(x[3] as number)}</td><td><span className={`status ${String(x[4]).toLowerCase()}`}>{x[4]}</span></td><td>{x[5]}</td></tr>)}</tbody></table></div></section></>; }
+
+function SimplePage({ type }: { type: "compass" | "audit" | "notifications" }) { const content = { compass: ["DBM COMPASS", "COMPASS data explorer", "NCA records, SAAODB appropriations, and LGSF releases synced from the Department of Budget and Management."], audit: ["TRANSPARENCY & ACCOUNTABILITY", "Audit trail", "Every important change is recorded and anchored on eGovchain."], notifications: ["COMMUNICATIONS", "Notifications", "SMS and in-app updates about your barangay financial records."] }[type]; return <><section className="page-title"><p className="eyebrow">{content[0]}</p><h1>{content[1]}</h1><p>{content[2]}</p></section><section className="panel placeholder"><div className="placeholder-icon"><Icon name={type === "audit" ? "shield" : type === "notifications" ? "bell" : "chart"}/></div><h3>{type === "audit" ? "No new audit events" : type === "notifications" ? "You’re all caught up" : "COMPASS data is ready"}</h3><p>{type === "compass" ? "Last synced today at 8:30 AM. Select a data source to explore city-wide allocations." : "New activity will appear here as it happens."}</p>{type === "compass" && <div className="tabs"><button className="active-tab">NCA records</button><button>SAAODB summary</button><button>LGSF releases</button></div>}</section></>; }
+
+export default function Home() { const [screen, setScreen] = useState<Screen>("overview"); const [role, setRole] = useState<Role>("TREASURER"); const [open, setOpen] = useState(false); const nav = useMemo(() => [{id:"overview",label:"Overview",icon:"grid"},{id:"budgets",label:"Budgets",icon:"wallet"},{id:"disbursements",label:"Disbursements",icon:"receipt"},{id:"compass",label:"COMPASS data",icon:"chart", cbo:true},{id:"audit",label:"Audit trail",icon:"shield"}], []); const displayName = role === "TREASURER" ? "Maria Santos" : "Antonio dela Cruz";
+  return <main className="app-shell"><aside className={`sidebar ${open ? "open" : ""}`}><div className="brand"><span className="brand-mark">e</span><span>ePondo</span><button className="mobile-close" onClick={()=>setOpen(false)}><Icon name="close"/></button></div><div className="role-switch"><button className={role === "TREASURER" ? "selected" : ""} onClick={()=>{setRole("TREASURER");setScreen("overview")}}>Treasurer</button><button className={role === "CBO_AUDITOR" ? "selected" : ""} onClick={()=>{setRole("CBO_AUDITOR");setScreen("overview")}}>CBO</button></div><p className="nav-label">MAIN MENU</p><nav>{nav.filter(n => !n.cbo || role === "CBO_AUDITOR").map(n=><button key={n.id} className={screen === n.id ? "nav-active" : ""} onClick={()=>{setScreen(n.id as Screen);setOpen(false)}}><Icon name={n.icon}/><span>{n.label}</span></button>)}</nav><div className="side-bottom"><button onClick={()=>setScreen("notifications")} className={screen === "notifications" ? "nav-active" : ""}><Icon name="bell"/><span>Notifications</span><i>3</i></button><div className="support">Need help?<br/><a href="#support">View help center</a></div></div></aside><div className="main-area"><header><button className="menu-button" onClick={()=>setOpen(true)}><Icon name="menu"/></button><div className="crumb">{screen === "overview" ? "Dashboard" : `Dashboard  /  ${screen[0].toUpperCase()+screen.slice(1)}`}</div><div className="header-actions"><button className="bell"><Icon name="bell"/><i>3</i></button><div className="avatar">{displayName.split(" ").map(x=>x[0]).join("")}</div><div className="profile"><b>{displayName}</b><span>{role === "TREASURER" ? "Barangay Treasurer" : "CBO Auditor"}</span></div><button className="logout"><Icon name="logout" size={18}/></button></div></header><div className="page-content">{screen === "overview" ? <Overview role={role} setScreen={setScreen}/> : screen === "budgets" ? <Budgets/> : screen === "disbursements" ? <Disbursements/> : <SimplePage type={screen as "compass" | "audit" | "notifications"}/>}</div></div>{open && <button className="backdrop" aria-label="Close navigation" onClick={()=>setOpen(false)}/>}</main>; }

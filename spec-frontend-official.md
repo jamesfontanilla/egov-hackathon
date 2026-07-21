@@ -2,7 +2,7 @@
 ## ePondo — Treasurer, Captain & CBO Interface
 
 > **Owner:** Developer B (Frontend — Officials)  
-> **Stack:** Nuxt 3 (Vue.js) + TailwindCSS + Pinia  
+> **Stack:** Nextjs + TailwindCSS + Pinia  
 > **Runs on:** Laptop 2  
 > **Depends on:** Laptop 1 (Backend API at `http://<laptop1-ip>:3000`)  
 > **Coordination:** Consumes REST API from Backend; no direct eGov API calls
