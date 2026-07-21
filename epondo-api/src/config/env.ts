@@ -1,0 +1,55 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
+export const config = {
+  port: parseInt(process.env.PORT || '3000'),
+  nodeEnv: process.env.NODE_ENV || 'development',
+  jwtSecret: process.env.JWT_SECRET || 'dev-secret',
+
+  database: {
+    url: process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/epondo',
+  },
+
+  redis: {
+    url: process.env.REDIS_URL || 'redis://localhost:6379',
+  },
+
+  egovph: {
+    baseUrl: process.env.EGOVPH_BASE_URL || '',
+    partnerCode: process.env.EGOVPH_PARTNER_CODE || '',
+    partnerSecret: process.env.EGOVPH_PARTNER_SECRET || '',
+    callbackUrl: process.env.EGOVPH_CALLBACK_URL || '',
+  },
+
+  everify: {
+    baseUrl: process.env.EVERIFY_BASE_URL || '',
+    clientId: process.env.EVERIFY_CLIENT_ID || '',
+    clientSecret: process.env.EVERIFY_CLIENT_SECRET || '',
+  },
+
+  faceLiveness: {
+    baseUrl: process.env.FACE_LIVENESS_BASE_URL || '',
+    apiKey: process.env.FACE_LIVENESS_API_KEY || '',
+    callbackUrl: process.env.FACE_LIVENESS_CALLBACK_URL || '',
+  },
+
+  dbmCompass: {
+    baseUrl: process.env.DBM_COMPASS_BASE_URL || '',
+    apiKey: process.env.DBM_COMPASS_API_KEY || '',
+  },
+
+  emessage: {
+    baseUrl: process.env.EMESSAGE_BASE_URL || '',
+    apiToken: process.env.EMESSAGE_API_TOKEN || '',
+  },
+
+  ereport: {
+    baseUrl: process.env.EREPORT_BASE_URL || '',
+    accessCode: process.env.EREPORT_ACCESS_CODE || '',
+  },
+
+  egovai: {
+    baseUrl: process.env.EGOVAI_BASE_URL || '',
+    accessCode: process.env.EGOVAI_ACCESS_CODE || '',
+  },
+};
