@@ -99,13 +99,13 @@ The eGov API ecosystem provides all necessary building blocks (authentication, i
 - 45 years old, non-technical, uses smartphone primarily
 - Pain: Spends 2-3 days manually computing statutory caps every fiscal year
 - Need: Automated compliance calculation, mobile-friendly interface, offline support
-- eGov touchpoints: eGovPH SSO login, NationalID eVerify for submission, Face Liveness for high-value vouchers
+- Authentication touchpoints: local email/password login, NationalID eVerify for submission, Face Liveness for high-value vouchers
 
 **Persona 2: Engr. Juan Reyes — City Budget Officer**
 - 38 years old, manages 30+ barangay budgets under City of Alaminos
 - Pain: No single dashboard to compare all barangay compliance ratios against DBM allocations
 - Need: Aggregated analytics, automated DBM ceiling validation, alerts for non-compliant submissions
-- eGov touchpoints: eGovPH SSO, DBM COMPASS cross-referencing, eMessage alerts
+- Authentication touchpoints: local email/password login, DBM COMPASS cross-referencing, eMessage alerts
 
 **Persona 3: Ana Villanueva — Concerned Citizen**
 - 28 years old, notices a barangay road project appears abandoned
@@ -121,9 +121,9 @@ The eGov API ecosystem provides all necessary building blocks (authentication, i
 
 | ID | Requirement | Priority | API Dependency |
 |----|-------------|----------|----------------|
-| FR-AUTH-01 | Users authenticate via eGovPH Single Sign-On using SuperApp credentials | P0 | eGovPH — `POST /api/token` |
-| FR-AUTH-02 | Upon SSO callback, system retrieves user profile (name, email, mobile, national ID, address) | P0 | eGovPH — `POST /api/partner/sso_authentication` |
-| FR-AUTH-03 | System maps eGovPH user profile to internal RBAC roles (TREASURER, CAPTAIN, CBO_AUDITOR, CITIZEN) | P0 | Internal |
+| FR-AUTH-01 | Users authenticate with local email/password credentials | P0 | Internal — `POST /api/auth/login` |
+| FR-AUTH-02 | Upon login, system returns the local user profile (name, email, mobile, role) | P0 | Internal — `GET /api/auth/me` |
+| FR-AUTH-03 | System maps local user accounts to internal RBAC roles (TREASURER, CAPTAIN, CBO_AUDITOR, CITIZEN) | P0 | Internal |
 | FR-AUTH-04 | High-security actions require NationalID eVerify identity validation | P0 | NationalID eVerify — `POST /api/query` |
 | FR-AUTH-05 | Face Liveness check required before budget submission (DRAFT→SUBMITTED) | P0 | Face Liveness — `POST /v1/liveness/session` + `GET /v1/liveness/result/{token}` |
 | FR-AUTH-06 | Face Liveness check required before large disbursement approval (≥₱50,000) | P1 | Face Liveness |
@@ -171,7 +171,7 @@ The eGov API ecosystem provides all necessary building blocks (authentication, i
 | FR-NOT-03 | SMS alert sent to Treasurer when CBO rejects budget (SUBMITTED→DRAFT with feedback) | P1 | eMessage |
 | FR-NOT-04 | SMS alert sent to Citizen when a project in their barangay starts (first disbursement) | P2 | eMessage |
 | FR-NOT-05 | SMS alert sent to Captain when a large voucher (≥₱50,000) is created | P1 | eMessage |
-| FR-NOT-06 | Recipient mobile numbers sourced from eGovPH SSO profile data | P0 | eGovPH profile `mobile` field |
+| FR-NOT-06 | Recipient mobile numbers sourced from the local user profile | P0 | Local user `mobile` field |
 
 ### 5.5 Citizen Oversight & Reporting Module
 
@@ -362,39 +362,37 @@ The eGov API ecosystem provides all necessary building blocks (authentication, i
 
 ## 8. eGov API Integration Specification
 
-### 8.1 eGovPH (Authentication Gateway)
+### 8.1 Local Authentication
 
-**Purpose:** Single Sign-On for all user roles via eGov SuperApp credentials.
+**Purpose:** Local email/password authentication for all user roles with JWT-based sessions.
 
 | Endpoint | Method | URL | Auth |
 |----------|--------|-----|------|
-| Generate Access Token | POST | `{{base_url}}/api/token` | None (uses partner credentials) |
-| SSO Authentication | POST | `{{base_url}}/api/partner/sso_authentication` | `Bearer {{access_token}}` |
+| Register | POST | `/api/auth/register` | None |
+| Login | POST | `/api/auth/login` | None |
+| Current User | GET | `/api/auth/me` | `Bearer {{jwt}}` |
 
-**Token Exchange Flow:**
+**Login Request:**
 ```json
-// Request: POST /api/token
+// Request: POST /api/auth/login
 {
-  "exchange_code": "generated_exchange_code",
-  "scope": "SSO_AUTHENTICATION",
-  "partner_code": "{{partner_code}}",
-  "partner_secret": "{{partner_secret}}"
+  "email": "citizen@example.com",
+  "password": "local-password"
 }
 
 // Response: 200 OK
 {
-  "access_token": "eyJ...<JWT>..."
+  "token": "eyJ...<JWT>..."
 }
 ```
 
-**Profile Response (SSO Authentication):**
-Returns: `imguid`, `email`, `birth_date`, `first_name`, `middle_name`, `last_name`, `suffix`, `gender`, `nationality`, `photo`, `mobile`, `address`, `street`, `barangay`, `municipality`, `province`, `region`, `zip_code`
+**Local Profile:**
+Returns: `id`, `email`, `firstName`, `middleName`, `lastName`, `mobile`, `gender`, `role`, `barangayPsgc`, `municipalityPsgc`
 
 **Integration Notes:**
-- `exchange_code` is single-use and expires after a short period
-- `partner_secret` must NEVER be exposed client-side
-- Use returned `access_token` in the `Authorization` header for SSO Authentication
-- Map profile fields to RBAC roles based on municipality/barangay matching
+- Passwords are stored as salted `scrypt` hashes and never returned to clients
+- Use the returned JWT in the `Authorization` header for protected API calls
+- Official roles are assigned locally; development registration supports role selection for the demo
 
 ---
 
@@ -726,7 +724,6 @@ If eGovchain API is unavailable during hackathon, implement a mock blockchain se
 
 | API | Auth Mechanism | Credential Storage Key |
 |-----|---------------|----------------------|
-| eGovPH | Partner code + secret → Bearer token | `EGOVPH_PARTNER_CODE`, `EGOVPH_PARTNER_SECRET` |
 | NationalID eVerify | Client ID + secret → Bearer token | `EVERIFY_CLIENT_ID`, `EVERIFY_CLIENT_SECRET` |
 | Face Liveness | x-api-key header | `FACE_LIVENESS_API_KEY` |
 | DBM COMPASS | X-API-Key header | `DBM_COMPASS_API_KEY` |
@@ -837,12 +834,13 @@ WHERE barangay_budget_id = :budget_id AND fund_category = 'CALAMITY_FUND';
 
 ```sql
 -- ============================================================
--- USERS TABLE (populated from eGovPH SSO profile)
+-- USERS TABLE (populated from local registration)
 -- ============================================================
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    egovph_imguid VARCHAR(100) UNIQUE NOT NULL,  -- From eGovPH SSO profile
+    external_id VARCHAR(100) UNIQUE,              -- Optional external identifier
     email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash TEXT,
     first_name VARCHAR(100) NOT NULL,
     middle_name VARCHAR(100),
     last_name VARCHAR(100) NOT NULL,
@@ -1054,7 +1052,7 @@ CREATE TABLE compass_sync_history (
 
 | Screen | Role(s) | Description |
 |--------|---------|-------------|
-| Login / SSO Redirect | All | eGovPH SSO login flow with partner redirect |
+| Login / Registration | All | Local email/password login with JWT session |
 | Dashboard — Treasurer | TREASURER | Budget status card, quick actions, compliance meters |
 | Dashboard — CBO | CBO_AUDITOR | Multi-barangay overview, pending reviews, COMPASS data |
 | Dashboard — Citizen | CITIZEN | Barangay project list, file complaint button, AI chat |
@@ -1239,7 +1237,7 @@ CREATE TABLE compass_sync_history (
 
 | Dependency | Risk | Contingency |
 |-----------|------|-------------|
-| eGovPH SSO availability | Cannot authenticate users | Implement session persistence; long-lived refresh tokens |
+| PostgreSQL availability | Cannot authenticate users | Start PostgreSQL and run the migration before login |
 | NationalID eVerify API | Cannot verify identity for submissions | Queue submission; allow CBO to manually verify with uploaded ID |
 | Face Liveness hosted page | Cannot complete biometric check | Allow QR code verification as fallback (NationalID QR Verify) |
 | eMessage delivery | SMS may not arrive | Log all notifications; provide in-app notification center as backup |
@@ -1255,7 +1253,7 @@ CREATE TABLE compass_sync_history (
 
 | Phase | Duration | Deliverables |
 |-------|----------|-------------|
-| **Phase 1: Foundation** | Day 1 (8h) | Project scaffolding, DB schema migration, eGovPH SSO integration, user RBAC |
+| **Phase 1: Foundation** | Day 1 (8h) | Project scaffolding, DB schema migration, local authentication, user RBAC |
 | **Phase 2: Budget Core** | Day 1-2 (12h) | Budget CRUD, state machine, statutory cap calculations, COMPASS polling |
 | **Phase 3: Security Layer** | Day 2 (8h) | Face Liveness integration, NationalID eVerify flow, biometric gates |
 | **Phase 4: Notifications** | Day 2-3 (4h) | eMessage SMS integration for all state transitions |
@@ -1268,7 +1266,7 @@ CREATE TABLE compass_sync_history (
 
 | Priority | Features | Must Have for Demo? |
 |----------|----------|-------------------|
-| **P0 (Critical)** | SSO Login, Budget CRUD, State Machine, Face Liveness, eVerify, eMessage notifications, Statutory Caps, COMPASS ceiling, eGovchain mock | ✅ Yes |
+| **P0 (Critical)** | Local Login, Budget CRUD, State Machine, Face Liveness, eVerify, eMessage notifications, Statutory Caps, COMPASS ceiling, eGovchain mock | ✅ Yes |
 | **P1 (Important)** | Disbursement module, eReport complaint flow, Document Extractor, CBO dashboard with COMPASS data, QR code verification | ✅ For wow factor |
 | **P2 (Nice-to-have)** | AI Assistant chatbot, Translator, Laws & Regulations query, LGSF dashboard, offline sync, notification center | ❌ If time permits |
 
@@ -1292,7 +1290,7 @@ CREATE TABLE compass_sync_history (
 | 1 | **Offline Sync Protocol:** What IndexedDB/SQLite schema should the mobile client use for provincial barangays with intermittent connectivity? | Frontend Lead | 🟡 Open |
 | 2 | **eGovchain API:** When will the eGovchain endpoint documentation be available? Should we proceed with the mock implementation? | Team Lead | 🟡 Open |
 | 3 | **eGov AI Document Parsing:** What minimum resolution and file formats (.PDF, .JPG, .PNG) should be enforced for voucher uploads? What's the max file size? | Backend Lead | 🟡 Open |
-| 4 | **RBAC Role Assignment:** How are roles assigned? Manual admin assignment, or auto-inferred from eGovPH profile fields (barangay, municipality)? | Product Owner | 🟡 Open |
+| 4 | **RBAC Role Assignment:** How are official roles assigned? Manual admin assignment or local development registration? | Product Owner | 🟡 Open |
 | 5 | **Face Liveness Action Type:** Should we use `redirect`, `post`, or `close` for the liveness session action? Depends on SPA vs. mobile webview architecture. | Frontend Lead | 🟡 Open |
 | 6 | **DBM COMPASS Mapping:** How do we map a parent LGU's PSGC code to the correct `deptCode`/`agencyCode` in the NCA endpoint? | Backend Lead | 🟡 Open |
 | 7 | **eReport Report Types:** Which report types from the eReport dataset map to our use cases (ghost project, delayed, substandard)? | Product Owner | 🟡 Open |
@@ -1305,7 +1303,7 @@ CREATE TABLE compass_sync_history (
 - [ ] **Offline Sync:** Define mobile client IndexedDB/SQLite schema for low-connectivity provincial barangays
 - [ ] **eGov AI Formats:** Agree on minimum resolution and file formats for voucher scanning
 - [ ] **CBO Dashboard:** Finalize key metrics (LGU-wide compliance ratios, flagged velocity spikes)
-- [ ] **RBAC Mapping:** Document internal permissions matrix linking eGovPH tokens to role types
+- [ ] **RBAC Mapping:** Document internal permissions matrix linking local accounts to role types
 - [ ] **eGovchain Mock:** Build SHA-256 hash mock service as fallback
 - [ ] **COMPASS Integration:** Map PSGC codes to UACS department/agency codes for NCA queries
 - [ ] **Environment Setup:** Collect all API base URLs, keys, and access codes from eGov portal

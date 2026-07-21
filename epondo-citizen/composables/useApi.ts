@@ -29,7 +29,7 @@ export function useApi() {
         // Only redirect to login if the current page requires auth
         // Don't redirect on public pages like /projects
         const currentPath = window.location.pathname;
-        const publicPaths = ['/', '/projects', '/about', '/login', '/callback'];
+        const publicPaths = ['/', '/projects', '/about', '/login'];
         const isPublicPage = publicPaths.some(p => currentPath === p || currentPath.startsWith('/projects/'));
 
         if (!isPublicPage) {

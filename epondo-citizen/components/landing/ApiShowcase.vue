@@ -1,7 +1,7 @@
 <template>
   <section class="py-16 px-4 bg-gray-50">
     <div class="max-w-4xl mx-auto text-center">
-      <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Powered by 7 eGov APIs</h2>
+      <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Powered by 6 eGov APIs</h2>
       <p class="text-gray-600 mb-8">Built on the official Philippine government digital infrastructure.</p>
 
       <div class="flex flex-wrap justify-center gap-3">
@@ -19,7 +19,6 @@
 
 <script setup lang="ts">
 const apis = [
-  '🔐 eGovPH SSO',
   '🪪 National ID (eVerify)',
   '📸 Face Liveness',
   '🧭 COMPASS',

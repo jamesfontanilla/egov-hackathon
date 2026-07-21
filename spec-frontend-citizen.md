@@ -13,7 +13,7 @@
 
 This spec covers:
 - Public project transparency page (no login required)
-- Citizen login via eGovPH SSO
+- Citizen login via local email/password authentication
 - Citizen complaint filing (eReport integration)
 - OTP verification flow
 - Complaint tracking by case number
@@ -51,8 +51,7 @@ epondo-citizen/
 │   └── chat.vue             # Full-screen AI chat layout
 ├── pages/
 │   ├── index.vue            # Landing page / marketing
-│   ├── login.vue            # eGovPH SSO for citizens
-│   ├── callback.vue         # SSO callback
+│   ├── login.vue            # Local email/password login and registration
 │   ├── projects/
 │   │   ├── index.vue        # Public project browser (no auth)
 │   │   └── [barangay].vue   # Projects in a specific barangay
@@ -138,7 +137,7 @@ epondo-citizen/
 │                                                                   │
 │  ┌─────────────────────────────────────────────────────────────┐  │
 │  │ Powered by 7 eGov APIs:                                    │  │
-│  │ [eGovPH] [NationalID] [Face Liveness] [COMPASS]            │  │
+│  │ [Local Auth] [NationalID] [Face Liveness] [COMPASS]        │  │
 │  │ [eMessage] [eReport] [eGov AI]                              │  │
 │  └─────────────────────────────────────────────────────────────┘  │
 │                                                                   │
@@ -175,9 +174,9 @@ epondo-citizen/
 
 ### 3.1 Citizen Login (`pages/login.vue`)
 
-- Same eGovPH SSO flow as Spec 2 but routes to citizen pages
-- "Login with eGov" button → redirect to backend `/api/auth/login`
-- Callback stores JWT + user profile (role = CITIZEN)
+- Login with email/password through backend `/api/auth/login`
+- New citizens can register through `/api/auth/register`
+- The backend stores a JWT and local profile (role = CITIZEN)
 - Login only required for: filing reports, accessing AI assistant
 
 ### 3.2 Auth Middleware
@@ -220,7 +219,7 @@ Step 2: DETAILS
 └── [Next]
 
 Step 3: VERIFICATION
-├── Complainant info (pre-filled from eGovPH profile):
+├── Complainant info (pre-filled from local account):
 │   ├── First name, middle name, last name
 │   ├── Gender
 │   ├── Mobile number
@@ -559,7 +558,7 @@ const { data } = await useApi().client.get('/api/ai/credits');
 - [ ] Landing page with hero, features, API showcase
 - [ ] Public projects browser (no auth): map + list view
 - [ ] Barangay detail page with budget summary + disbursements
-- [ ] Citizen eGovPH SSO login
+- [ ] Citizen email/password login
 - [ ] Complaint filing multi-step wizard:
   - [ ] Cascading location dropdowns (Region→Province→Municipality→Barangay)
   - [ ] Leaflet map with draggable pin
@@ -592,7 +591,7 @@ GET  /api/reports/datasets/barangays?municipality_code=X
 GET  /api/reports/datasets/report-types
 
 # Authenticated (CITIZEN role)
-POST /api/auth/callback                                   → Login
+POST /api/auth/login                                      → Login
 GET  /api/auth/me                                         → Profile
 
 # eReport flow
@@ -615,7 +614,7 @@ GET  /api/ai/credits                                      → Check credits
 
 | What | This Spec (Laptop 3) | Backend (Laptop 1) | Official UI (Laptop 2) |
 |------|----------------------|--------------------|-----------------------|
-| Auth | Same SSO flow, but routes to citizen pages | Provides unified `/api/auth/*` | Routes to official pages |
+| Auth | Local email/password flow, routed to citizen pages | Provides unified `/api/auth/*` | Routes to official pages |
 | Projects | Public read access | Returns public-scoped data | Not shown (CBO sees all) |
 | Reports | Full complaint flow | Proxies to eReport API | Not applicable |
 | AI | Chat + Laws + Translate | Proxies to eGov AI API | Only document extractor |

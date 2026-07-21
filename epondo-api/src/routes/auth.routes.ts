@@ -1,121 +1,227 @@
 import { FastifyInstance } from 'fastify';
+import { promisify } from 'node:util';
+import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import { config } from '../config/env.js';
 import { db } from '../db/connection.js';
-import { egovPhService } from '../services/egovph.service.js';
 import { authMiddleware } from '../middleware/auth.middleware.js';
-import { logAudit } from '../logic/audit.js';
+
+const scrypt = promisify(scryptCallback);
+const VALID_ROLES = ['TREASURER', 'CAPTAIN', 'CBO_AUDITOR', 'CITIZEN'] as const;
+type AppRole = (typeof VALID_ROLES)[number];
+
+interface UserRow {
+  id: string;
+  email: string;
+  password_hash: string | null;
+  first_name: string;
+  middle_name: string | null;
+  last_name: string;
+  role: AppRole;
+  barangay_psgc: string | null;
+  municipality_psgc: string | null;
+  mobile: string | null;
+  gender: string | null;
+  is_active: boolean;
+}
+
+function normalizeEmail(value: unknown): string {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
+async function hashPassword(password: string): Promise<string> {
+  const salt = randomBytes(16).toString('hex');
+  const derivedKey = await scrypt(password, salt, 64) as Buffer;
+  return `scrypt$${salt}$${derivedKey.toString('hex')}`;
+}
+
+async function verifyPassword(password: string, storedHash: string | null): Promise<boolean> {
+  if (!storedHash) return false;
+
+  const [algorithm, salt, hash] = storedHash.split('$');
+  if (algorithm !== 'scrypt' || !salt || !hash) return false;
+
+  try {
+    const derivedKey = await scrypt(password, salt, 64) as Buffer;
+    const expectedKey = Buffer.from(hash, 'hex');
+    return expectedKey.length === derivedKey.length && timingSafeEqual(expectedKey, derivedKey);
+  } catch {
+    return false;
+  }
+}
+
+function isRole(value: unknown): value is AppRole {
+  return typeof value === 'string' && VALID_ROLES.includes(value as AppRole);
+}
+
+function toAuthUser(user: UserRow) {
+  return {
+    id: user.id,
+    email: user.email,
+    firstName: user.first_name,
+    middleName: user.middle_name || '',
+    lastName: user.last_name,
+    role: user.role,
+    barangayPsgc: user.barangay_psgc,
+    municipalityPsgc: user.municipality_psgc,
+    mobile: user.mobile || '',
+    gender: user.gender || '',
+  };
+}
+
+function issueToken(user: UserRow): string {
+  return jwt.sign(toAuthUser(user), config.jwtSecret, { expiresIn: '24h' });
+}
+
+function invalidCredentials(reply: any) {
+  return reply.status(401).send({
+    success: false,
+    error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' },
+  });
+}
 
 export async function authRoutes(app: FastifyInstance) {
-  // GET /api/auth/login - Info about SSO (no redirect for hackathon)
-  // In production, eGovPH's app redirects users to our callback with exchange_code.
-  // For hackathon testing, use the test panel to generate an exchange code,
-  // then POST it to /api/auth/callback
-  app.get('/api/auth/login', async (request, reply) => {
+  // GET /api/auth/login - Local authentication information
+  app.get('/api/auth/login', async (_request, reply) => {
     return reply.send({
       success: true,
       data: {
-        message: 'eGovPH SSO - Hackathon Mode',
-        instructions: 'Generate an exchange code from the eGovPH test panel, then POST it to /api/auth/callback',
-        endpoint: 'POST /api/auth/callback',
-        body: '{ "exchange_code": "YOUR_CODE_HERE" }',
-        test_panel: 'https://platforms.e.gov.ph/dashboard/api-catalogs/egov-sso',
-        test_account: 'josie@yopmail.com',
+        message: 'Local email/password authentication',
+        login_endpoint: 'POST /api/auth/login',
+        registration_endpoint: 'POST /api/auth/register',
       },
     });
   });
 
-  // GET /api/auth/callback - eGovPH redirects here with exchange_code after user authenticates
-  app.get('/api/auth/callback', async (request, reply) => {
-    const { exchange_code, code } = request.query as { exchange_code?: string; code?: string };
-    const exchangeCode = exchange_code || code;
+  // POST /api/auth/register - Create a local account
+  app.post('/api/auth/register', async (request, reply) => {
+    const body = request.body as {
+      email?: string;
+      password?: string;
+      first_name?: string;
+      firstName?: string;
+      middle_name?: string;
+      middleName?: string;
+      last_name?: string;
+      lastName?: string;
+      mobile?: string;
+      gender?: string;
+      role?: string;
+      barangay_psgc?: string;
+      municipality_psgc?: string;
+    };
 
-    if (!exchangeCode) {
-      return reply.redirect('http://localhost:3001/login?error=no_code');
-    }
+    const email = normalizeEmail(body.email);
+    const password = typeof body.password === 'string' ? body.password : '';
+    const firstName = (body.first_name || body.firstName || '').trim();
+    const middleName = (body.middle_name || body.middleName || '').trim() || null;
+    const lastName = (body.last_name || body.lastName || '').trim();
 
-    try {
-      // Exchange code for user profile via eGovPH API
-      const profile = await egovPhService.authenticateUser(exchangeCode);
-
-      // Generate JWT (skip DB for now if DB is not running)
-      const tokenPayload = {
-        id: profile.uniqid,
-        email: profile.email,
-        firstName: profile.first_name,
-        lastName: profile.last_name,
-        middleName: profile.middle_name,
-        role: 'CITIZEN',
-        mobile: profile.mobile,
-        gender: profile.gender,
-      };
-
-      const token = jwt.sign(tokenPayload, config.jwtSecret, { expiresIn: '24h' });
-
-      // Redirect to frontend with token
-      return reply.redirect(`http://localhost:3001/callback?token=${token}&user=${encodeURIComponent(JSON.stringify(tokenPayload))}`);
-    } catch (error: any) {
-      app.log.error(error, 'SSO callback error');
-      return reply.redirect(`http://localhost:3001/login?error=auth_failed`);
-    }
-  });
-
-  // POST /api/auth/callback - API-based exchange code flow (for testing)
-  // Use this with the test panel: generate exchange code, then POST it here
-  app.post('/api/auth/callback', async (request, reply) => {
-    const { exchange_code } = request.body as { exchange_code: string };
-
-    if (!exchange_code) {
+    if (!email || !email.includes('@') || !firstName || !lastName || password.length < 8) {
       return reply.status(400).send({
         success: false,
-        error: { code: 'MISSING_CODE', message: 'exchange_code is required' },
+        error: {
+          code: 'INVALID_REGISTRATION',
+          message: 'Provide a valid email, first name, last name, and a password of at least 8 characters',
+        },
       });
     }
 
     try {
-      const profile = await egovPhService.authenticateUser(exchange_code.trim());
+      const passwordHash = await hashPassword(password);
+      const existingUser = await db<UserRow>('users').where({ email }).first();
 
-      const tokenPayload = {
-        id: profile.uniqid,
-        email: profile.email,
-        firstName: profile.first_name,
-        lastName: profile.last_name,
-        middleName: profile.middle_name,
-        role: 'CITIZEN',
-        mobile: profile.mobile,
-        gender: profile.gender,
-      };
+      // Allow existing legacy users to set a local password during migration.
+      if (existingUser) {
+        if (existingUser.password_hash) {
+          return reply.status(409).send({
+            success: false,
+            error: { code: 'EMAIL_IN_USE', message: 'An account with this email already exists' },
+          });
+        }
 
-      const token = jwt.sign(tokenPayload, config.jwtSecret, { expiresIn: '24h' });
+        const [updatedUser] = await db('users')
+          .where({ id: existingUser.id })
+          .update({
+            password_hash: passwordHash,
+            first_name: firstName,
+            middle_name: middleName,
+            last_name: lastName,
+            mobile: body.mobile?.trim() || existingUser.mobile,
+            gender: body.gender?.trim() || existingUser.gender,
+            last_login_at: new Date(),
+            updated_at: new Date(),
+          })
+          .returning('*');
 
-      return reply.send({
-        success: true,
-        data: { token, user: tokenPayload },
-      });
+        const token = issueToken(updatedUser);
+        return reply.status(201).send({ success: true, data: { token, user: toAuthUser(updatedUser) } });
+      }
+
+      // Role selection is useful for the local hackathon demo. Production deployments
+      // should assign official roles through an administrator instead.
+      const role: AppRole = config.nodeEnv === 'development' && isRole(body.role) ? body.role : 'CITIZEN';
+      const [user] = await db('users')
+        .insert({
+          email,
+          password_hash: passwordHash,
+          first_name: firstName,
+          middle_name: middleName,
+          last_name: lastName,
+          mobile: body.mobile?.trim() || null,
+          gender: body.gender?.trim() || null,
+          role,
+          barangay_psgc: body.barangay_psgc?.trim() || null,
+          municipality_psgc: body.municipality_psgc?.trim() || null,
+          is_active: true,
+          last_login_at: new Date(),
+        })
+        .returning('*');
+
+      const token = issueToken(user);
+      return reply.status(201).send({ success: true, data: { token, user: toAuthUser(user) } });
     } catch (error: any) {
-      const upstreamStatus = error.response?.status;
-      const status = upstreamStatus === 403 ? 403 : upstreamStatus === 422 ? 422 : 401;
-      const code = upstreamStatus === 403
-        ? 'EGOV_PARTNER_FORBIDDEN'
-        : upstreamStatus === 422
-          ? 'INVALID_EXCHANGE_CODE'
-          : 'AUTH_FAILED';
-
-      return reply.status(status).send({
+      app.log.error({ err: error }, 'Local registration failed');
+      return reply.status(500).send({
         success: false,
-        error: { code, message: error.response?.data?.message || error.message || 'Authentication failed' },
+        error: { code: 'REGISTRATION_FAILED', message: 'Unable to create the account' },
       });
     }
   });
 
-  // GET /api/auth/me - Get current user profile
+  // POST /api/auth/login - Authenticate with local email/password credentials
+  app.post('/api/auth/login', async (request, reply) => {
+    const body = request.body as { email?: string; password?: string };
+    const email = normalizeEmail(body.email);
+    const password = typeof body.password === 'string' ? body.password : '';
+
+    if (!email || !password) return invalidCredentials(reply);
+
+    try {
+      const user = await db<UserRow>('users').where({ email }).first();
+      if (!user || !user.is_active || !(await verifyPassword(password, user.password_hash))) {
+        return invalidCredentials(reply);
+      }
+
+      await db('users').where({ id: user.id }).update({ last_login_at: new Date() });
+      const token = issueToken(user);
+      return reply.send({ success: true, data: { token, user: toAuthUser(user) } });
+    } catch (error: any) {
+      app.log.error({ err: error }, 'Local login failed');
+      return reply.status(500).send({
+        success: false,
+        error: { code: 'LOGIN_FAILED', message: 'Unable to authenticate right now' },
+      });
+    }
+  });
+
+  // GET /api/auth/me - Get the current authenticated user
   app.get('/api/auth/me', { preHandler: [authMiddleware] }, async (request, reply) => {
-    // Return the JWT payload directly (no DB needed for hackathon demo)
     return reply.send({ success: true, data: request.user });
   });
 
-  // POST /api/auth/logout
-  app.post('/api/auth/logout', async (request, reply) => {
+  // POST /api/auth/logout - JWT logout is handled by clearing the client token
+  app.post('/api/auth/logout', async (_request, reply) => {
     return reply.send({ success: true, data: { message: 'Logged out successfully' } });
   });
 }

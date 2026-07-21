@@ -1,5 +1,10 @@
 import { db } from './connection.js';
 
+// Development-only account for testing an authenticated citizen session.
+// The password is: Demo1234!
+const DEMO_PASSWORD_HASH =
+  'scrypt$epondo-demo-salt$ea734dc1b8da42bcaa1d68270bae350525551729fb8a2d5985592ca9a2ca13afb01aad2d96f3f4c047378922f289e75387cfc34d0173720346c7887835a20175';
+
 const MIGRATION_SQL = `
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
@@ -7,8 +12,9 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- USERS TABLE
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    egovph_imguid VARCHAR(100) UNIQUE NOT NULL,
+    external_id VARCHAR(100) UNIQUE,
     email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash TEXT,
     first_name VARCHAR(100) NOT NULL,
     middle_name VARCHAR(100),
     last_name VARCHAR(100) NOT NULL,
@@ -26,6 +32,20 @@ CREATE TABLE IF NOT EXISTS users (
 );
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 CREATE INDEX IF NOT EXISTS idx_users_barangay ON users(barangay_psgc);
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'egovph_imguid'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'external_id'
+    ) THEN
+        ALTER TABLE users RENAME COLUMN egovph_imguid TO external_id;
+    END IF;
+END $$;
+ALTER TABLE users ALTER COLUMN external_id DROP NOT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
 
 -- PARENT LGUs
 CREATE TABLE IF NOT EXISTS parent_lgus (
@@ -170,6 +190,25 @@ async function migrate() {
     await db.raw(MIGRATION_SQL_2);
     console.log('  ✅ Barangay Budgets created');
     await db.raw(MIGRATION_SQL_3);
+    await db('users')
+      .insert({
+        email: 'demo@epondo.local',
+        password_hash: DEMO_PASSWORD_HASH,
+        first_name: 'Demo',
+        last_name: 'Citizen',
+        role: 'CITIZEN',
+        is_active: true,
+      })
+      .onConflict('email')
+      .merge({
+        password_hash: DEMO_PASSWORD_HASH,
+        first_name: 'Demo',
+        last_name: 'Citizen',
+        role: 'CITIZEN',
+        is_active: true,
+        updated_at: new Date(),
+      });
+    console.log('Demo account ready: demo@epondo.local');
     console.log('  ✅ Disbursements + Audit + Notifications + COMPASS History created');
     console.log('🎉 All migrations complete!');
   } catch (error) {

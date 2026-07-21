@@ -6,7 +6,7 @@
       <p class="text-gray-600 text-lg">
         ePondo is a public transparency platform for local governance in the Philippines.
         It enables citizens to track their barangay's budget, report issues, and access
-        AI-powered budget analysis — all verified through official eGov APIs.
+        AI-powered budget analysis through local email/password authentication and government APIs.
       </p>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
@@ -29,9 +29,8 @@
       </div>
 
       <div class="mt-10 bg-blue-50 p-6 rounded-lg">
-        <h3 class="font-semibold text-lg text-blue-800 mb-2">eGov APIs Used</h3>
+        <h3 class="font-semibold text-lg text-blue-800 mb-2">Government APIs Used</h3>
         <div class="flex flex-wrap gap-2">
-          <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">eGovPH SSO</span>
           <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">National ID</span>
           <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">Face Liveness</span>
           <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">COMPASS</span>

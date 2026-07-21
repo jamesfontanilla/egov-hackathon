@@ -14,7 +14,7 @@
 This spec covers:
 - Database schema creation & migrations
 - All REST API endpoints (internal)
-- eGov API integration services (server-to-server)
+- Government API integration services (server-to-server)
 - Business logic: state machine, statutory cap enforcement, token management
 - Background jobs: DBM COMPASS polling, notification dispatch
 
@@ -50,10 +50,7 @@ DATABASE_URL=postgresql://postgres:password@localhost:5432/epondo
 # Redis
 REDIS_URL=redis://localhost:6379
 
-# eGovPH SSO
-EGOVPH_BASE_URL=https://hackathon-sso.e.gov.ph
-EGOVPH_PARTNER_CODE=your_partner_code
-EGOVPH_PARTNER_SECRET=your_partner_secret
+# Local authentication uses PostgreSQL password hashes and JWTs.
 
 # NationalID eVerify
 EVERIFY_BASE_URL=https://api.nationalid.egov.ph
@@ -93,8 +90,9 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- USERS TABLE
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    egovph_imguid VARCHAR(100) UNIQUE NOT NULL,
+    external_id VARCHAR(100) UNIQUE, -- Optional external identifier; local auth uses password_hash
     email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash TEXT,
     first_name VARCHAR(100) NOT NULL,
     middle_name VARCHAR(100),
     last_name VARCHAR(100) NOT NULL,
@@ -247,13 +245,13 @@ CREATE TABLE compass_sync_history (
 
 Build these as isolated service modules under `src/services/`:
 
-### 2.1 eGovPH Auth Service (`src/services/egovph.service.ts`)
+### 2.1 Local Auth Service (`src/routes/auth.routes.ts`)
 
 ```typescript
 // Responsibilities:
-// 1. Exchange authorization code for access_token
-// 2. Fetch user profile via SSO Authentication
-// 3. Map profile to internal user + RBAC role
+// 1. Register users with email/password credentials
+// 2. Authenticate users with a salted password hash
+// 3. Issue JWTs containing the internal RBAC role
 
 interface EgovPhTokenResponse {
   access_token: string;
@@ -280,12 +278,11 @@ interface EgovPhProfile {
   zip_code: string;
 }
 
-// POST {{base_url}}/api/token
-// Body: { exchange_code, scope: "SSO_AUTHENTICATION", partner_code, partner_secret }
+// POST /api/auth/register
+// Body: { email, password, first_name, last_name, role? }
 
-// POST {{base_url}}/api/partner/sso_authentication
-// Header: Authorization: Bearer {{access_token}}
-// No body — returns profile
+// POST /api/auth/login
+// Body: { email, password }
 ```
 
 ### 2.2 NationalID eVerify Service (`src/services/everify.service.ts`)
@@ -429,8 +426,9 @@ function anchorState(payload: object): string {
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/auth/login` | Redirect to eGovPH SSO |
-| POST | `/api/auth/callback` | Exchange code, create/update user, issue JWT |
+| GET | `/api/auth/login` | Local authentication information |
+| POST | `/api/auth/register` | Create a local email/password account |
+| POST | `/api/auth/login` | Authenticate a local account and issue JWT |
 | GET | `/api/auth/me` | Get current user profile |
 | POST | `/api/auth/logout` | Invalidate session |
 
@@ -644,7 +642,7 @@ All responses follow this shape:
 
 - [ ] PostgreSQL schema migrated and running
 - [ ] All 8 eGov service modules implemented
-- [ ] Auth flow complete (eGovPH SSO → JWT → RBAC)
+- [ ] Auth flow complete (email/password → JWT → RBAC)
 - [ ] Budget CRUD + state machine + cap enforcement
 - [ ] Disbursement CRUD + biometric gates
 - [ ] Face Liveness create/result endpoints working
@@ -661,6 +659,6 @@ All responses follow this shape:
 ## Coordination Notes for Laptops 2 & 3
 
 - **Base URL:** `http://localhost:3000` (share via LAN IP or ngrok)
-- **Auth:** Frontend gets JWT via `/api/auth/callback` after SSO redirect
+- **Auth:** Frontend gets JWT via `/api/auth/login` after local email/password authentication
 - **All external API calls go through this backend** — frontend never calls eGov APIs directly
 - **Postman Collection:** Export and share with team once endpoints are stable

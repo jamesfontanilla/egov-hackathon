@@ -14,13 +14,6 @@ export const config = {
     url: process.env.REDIS_URL || 'redis://localhost:6379',
   },
 
-  egovph: {
-    baseUrl: process.env.EGOVPH_BASE_URL || '',
-    partnerCode: process.env.EGOVPH_PARTNER_CODE || '',
-    partnerSecret: process.env.EGOVPH_PARTNER_SECRET || '',
-    callbackUrl: process.env.EGOVPH_CALLBACK_URL || '',
-  },
-
   everify: {
     baseUrl: process.env.EVERIFY_BASE_URL || '',
     clientId: process.env.EVERIFY_CLIENT_ID || '',

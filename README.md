@@ -29,7 +29,7 @@ It bridges the visibility gap between national macro-funding allocations (DBM CO
 
 | API | Role |
 |-----|------|
-| **eGovPH** | Single Sign-On (SSO) for all user roles |
+| **Local Auth** | Email/password authentication with JWT sessions and RBAC |
 | **NationalID eVerify** | PhilSys identity validation for high-security actions |
 | **Face Liveness** | Biometric anti-spoofing (confidence ≥ 95.0) |
 | **DBM COMPASS** | Macro budget baseline / NTA ceiling polling |
@@ -112,7 +112,7 @@ It bridges the visibility gap between national macro-funding allocations (DBM CO
 - [ ] Offline Synchronization Protocol (IndexedDB/SQLite for low-connectivity barangays)
 - [ ] eGov AI Document Parsing Criteria (min resolution, supported formats)
 - [ ] CBO Dashboard Analytics (LGU-wide compliance ratios, spending velocity)
-- [ ] RBAC Permissions Matrix (eGovPH token → application role mapping)
+- [ ] RBAC Permissions Matrix (local account role mapping)
 
 ---
 

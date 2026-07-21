@@ -15,12 +15,12 @@ This platform serves as a multi-tenant, decentralized financial compliance and p
 * **Compliance Risk:** Local treasurers and youth councils (SK) face complex manual calculations to satisfy statutory percentage caps under Republic Acts (RA 7160, RA 10742, RA 10121).
 * **Audit & Transparency Vacuum:** Grassroots projects often lack immutable execution logs, making citizen feedback and audit tracking reactive rather than preventive.
 ---
-## 🛠️ 2. eGovPH Catalog API Integration Matrix
-The system architecture relies **strictly on the 8 verified eGov APIs** available in the official platform catalog:
+## 🛠️ 2. Government API Integration Matrix
+The system uses local email/password authentication plus the government APIs available in the official platform catalog:
 
 | Integrated API | Functional Responsibility in Architecture |
 | :--- | :--- |
-| **`eGovPH`** | **Authentication Gateway**: Single Sign-On (SSO) endpoint providing secure OAuth2 authentication for Barangay Captains, Treasurers, City Budget Officers (CBO), and Citizens using SuperApp credentials. |
+| **Local Auth** | **Authentication Gateway**: Email/password accounts with JWT sessions and internal RBAC roles. |
 | **`NationalID eVerify`** | **Identity Validation**: Validates PhilSys / PhilID tokens before granting elevated privileges for budget creation, submission, or approval. |
 | **`FACE LIVENESS`** | **Biometric Anti-Spoofing**: Enforces active liveness verification during high-security state changes (e.g., moving budget to `OPERATIVE` or approving large vouchers). |
 | **`DBM COMPASS`** | **Macro Budget Baseline**: Programmatically polls national DBM budget execution data (NTA/LGSF) to set the macro funding ceiling for the parent City/Municipality. |
@@ -45,7 +45,7 @@ The system architecture relies **strictly on the 8 verified eGov APIs** availabl
 └───────────┬──────────┘                               └───────────┬──────────┘
 │                                                      │
  1. AUTHENTICATION & IDENTITY                           3. CIVIC OVERSIGHT
-   ├─ eGovPH (Single Sign-On)                             ├─ eReport (Flag anomalous projects)
+   ├─ Local Auth (Email/Password)                         ├─ eReport (Flag anomalous projects)
    ├─ NationalID eVerify (PhilSys Verification)           ├─ eMessage (SMS/Email alerts)
    └─ FACE LIVENESS (Biometric Verification)              └─ eGov AI (Document Parsing / NLP)
    │                                                      │
@@ -61,7 +61,7 @@ To prevent premature or unlawful spending, a Barangay budget must transition thr
 estimated revenues)       eVerify + Liveness Check)   eGovchain State Anchor)    eGovchain Vault Lock)
 ```
 1. **DRAFT (Barangay Preparation)**
-   * Treasurer authenticates via **`eGovPH` SSO**.
+   * Treasurer authenticates via **local email/password login**.
    * Inputs local revenue estimates (RPT shares, local fees). Spending modules remain **locked**.
    * **`eGov AI`** checks attached supporting documents for formatting errors or anomalies.
 2. **SUBMITTED (LGU Verification)**
@@ -146,6 +146,6 @@ Before finalized submission, the development team must address the following tec
  * [ ] **Offline Synchronization Protocol:** Define mobile client IndexedDB/SQLite schema for low-connectivity provincial barangays pushing data to the API once back online.
  * [ ] **eGov AI Document Parsing Criteria:** Agree on minimum resolution and file formats (.PDF, .JPG) supported when scanning paper purchase orders.
  * [ ] **CBO Dashboard Analytics:** Finalize key metrics shown to the City Budget Officer (e.g., LGU-wide statutory compliance ratios, flagged velocity spikes).
- * [ ] **Role-Based Access Control (RBAC):** Map out internal permissions matrix linking eGovPH user tokens to application role types (TREASURER, CAPTAIN, CBO_AUDITOR, CITIZEN).
+ * [ ] **Role-Based Access Control (RBAC):** Map out internal permissions matrix linking local user accounts to application role types (TREASURER, CAPTAIN, CBO_AUDITOR, CITIZEN).
 ```
 ```

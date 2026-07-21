@@ -4,7 +4,7 @@
       <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div>
           <h3 class="text-white font-semibold mb-3">🇵🇭 ePondo</h3>
-          <p class="text-sm">Transparent Local Governance for Every Filipino. Powered by eGov APIs.</p>
+          <p class="text-sm">Transparent Local Governance for Every Filipino. Powered by local authentication and government APIs.</p>
         </div>
         <div>
           <h3 class="text-white font-semibold mb-3">Quick Links</h3>
@@ -17,7 +17,7 @@
         </div>
         <div>
           <h3 class="text-white font-semibold mb-3">Powered By</h3>
-          <p class="text-sm">eGovPH • National ID • Face Liveness • COMPASS • eMessage • eReport • eGov AI</p>
+          <p class="text-sm">National ID • Face Liveness • COMPASS • eMessage • eReport • eGov AI</p>
         </div>
       </div>
       <div class="mt-8 pt-6 border-t border-gray-700 text-center text-sm">

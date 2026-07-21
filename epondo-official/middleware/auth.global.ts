@@ -6,7 +6,7 @@ export default defineNuxtRouteMiddleware((to) => {
     authStore.loadFromStorage();
   }
 
-  const publicPages = ['/login', '/callback'];
+  const publicPages = ['/login'];
   const isPublicPage = publicPages.some(p => to.path.startsWith(p));
 
   if (!authStore.isAuthenticated && !isPublicPage) {

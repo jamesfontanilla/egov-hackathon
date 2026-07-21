@@ -12,7 +12,7 @@
 ## Scope
 
 This spec covers:
-- Login/SSO redirect flow
+- Local email/password login and registration flow
 - Treasurer Dashboard (budget management, disbursements, document upload)
 - Captain Dashboard (disbursement co-approval)
 - CBO Dashboard (multi-barangay review, COMPASS data, audit trail)
@@ -46,8 +46,7 @@ epondo-official/
 │   └── auth.vue             # Login/callback layout (no sidebar)
 ├── pages/
 │   ├── index.vue            # Redirect to login or dashboard
-│   ├── login.vue            # eGovPH SSO redirect
-│   ├── callback.vue         # SSO callback handler
+│   ├── login.vue            # Local email/password login and registration
 │   ├── dashboard/
 │   │   ├── index.vue        # Role-based dashboard router
 │   │   ├── treasurer.vue    # Treasurer home
@@ -134,19 +133,18 @@ export function useApi() {
 
 ### 2.1 Login Page (`pages/login.vue`)
 
-- Display ePondo logo + "Login with eGov" button
-- On click: redirect to backend `/api/auth/login` which redirects to eGovPH SSO
-- After SSO, user is redirected to `/callback?code=EXCHANGE_CODE`
+- Display ePondo logo with email/password fields
+- New local accounts can be assigned a role during development
+- Login calls backend `/api/auth/login` and receives a JWT
 
-### 2.2 Callback Handler (`pages/callback.vue`)
+### 2.2 Local Login Handler
 
 ```typescript
-// On mount:
-// 1. Extract exchange_code from URL query
-// 2. POST /api/auth/callback { exchange_code }
-// 3. Receive { token (JWT), user (profile + role) }
-// 4. Store in Pinia auth store + cookie
-// 5. Redirect to role-based dashboard:
+// On submit:
+// 1. POST /api/auth/login { email, password }
+// 2. Receive { token (JWT), user (profile + role) }
+// 3. Store in Pinia auth store
+// 4. Redirect to role-based dashboard:
 //    - TREASURER → /dashboard/treasurer
 //    - CAPTAIN → /dashboard/treasurer (shared view with co-approval)
 //    - CBO_AUDITOR → /dashboard/cbo
@@ -175,7 +173,7 @@ interface AuthState {
 
 - If no token in store/cookie → redirect to `/login`
 - If token exists → validate not expired
-- Exception: `/login` and `/callback` pages skip this
+- Exception: `/login` skips this
 
 ### 2.5 Role Middleware (`middleware/role.ts`)
 
@@ -468,7 +466,7 @@ module.exports = {
 ## Deliverables Checklist
 
 - [ ] Nuxt 3 project running on Laptop 2
-- [ ] eGovPH SSO login → callback → JWT stored → role-based redirect
+- [ ] Local email/password login → JWT stored → role-based redirect
 - [ ] Treasurer dashboard with budget status + cap meters
 - [ ] Budget CRUD: create, edit (DRAFT), view detail
 - [ ] Budget submission flow: review → liveness iframe → eVerify → submit
@@ -506,7 +504,7 @@ Content-Type: application/json
 
 ### Key API Calls from This Frontend
 ```
-POST /api/auth/callback              → Login
+POST /api/auth/login                 → Login
 GET  /api/auth/me                    → Get profile
 GET  /api/budgets                    → List budgets
 POST /api/budgets                    → Create budget

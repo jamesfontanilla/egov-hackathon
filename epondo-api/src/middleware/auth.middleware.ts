@@ -6,11 +6,13 @@ export interface AuthUser {
   id: string;
   email: string;
   firstName: string;
+  middleName?: string;
   lastName: string;
   role: 'TREASURER' | 'CAPTAIN' | 'CBO_AUDITOR' | 'CITIZEN';
-  barangayPsgc: string;
-  municipalityPsgc: string;
+  barangayPsgc: string | null;
+  municipalityPsgc: string | null;
   mobile: string;
+  gender?: string;
 }
 
 declare module 'fastify' {
