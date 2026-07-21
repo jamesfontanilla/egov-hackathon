@@ -51,7 +51,7 @@ DATABASE_URL=postgresql://postgres:password@localhost:5432/epondo
 REDIS_URL=redis://localhost:6379
 
 # eGovPH SSO
-EGOVPH_BASE_URL=https://api.egov.ph
+EGOVPH_BASE_URL=https://hackathon-sso.e.gov.ph
 EGOVPH_PARTNER_CODE=your_partner_code
 EGOVPH_PARTNER_SECRET=your_partner_secret
 
@@ -260,7 +260,7 @@ interface EgovPhTokenResponse {
 }
 
 interface EgovPhProfile {
-  imguid: string;
+  uniqid: string;
   email: string;
   birth_date: string;
   first_name: string;

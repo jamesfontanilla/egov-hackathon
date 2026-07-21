@@ -5,7 +5,7 @@
         <span class="text-5xl">🇵🇭</span>
         <h1 class="text-2xl font-bold text-gray-800 mt-4">Login to ePondo</h1>
         <p class="text-gray-500 mt-2">
-          Sign in with your eGovPH account to file reports and access the AI assistant.
+          Sign in with your eGovPH account.
         </p>
       </div>
 
@@ -14,21 +14,29 @@
         {{ errorMessage }}
       </div>
 
-      <!-- eGovPH SSO Login Button -->
+      <!-- Exchange code input (hackathon demo) -->
+      <div class="text-left mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">eGovPH Exchange Code</label>
+        <input
+          v-model="exchangeCode"
+          type="text"
+          placeholder="Paste exchange code from eGovPH"
+          class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          @keyup.enter="handleLogin"
+        />
+        <p class="text-xs text-gray-400 mt-1">
+          Get a code from the <a href="https://platforms.e.gov.ph/dashboard/api-catalogs/egov-sso" target="_blank" class="text-primary-500 underline">eGovPH test panel</a> using test account: josie@yopmail.com
+        </p>
+      </div>
+
       <button
         @click="handleLogin"
-        class="w-full bg-primary-500 text-white py-3 px-6 rounded-lg font-semibold hover:bg-primary-600 transition-colors flex items-center justify-center gap-2"
+        :disabled="!exchangeCode || loading"
+        class="w-full bg-primary-500 text-white py-3 px-6 rounded-lg font-semibold hover:bg-primary-600 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
       >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-        </svg>
-        Login with eGovPH
+        <span v-if="loading">Authenticating...</span>
+        <span v-else>Login with eGovPH</span>
       </button>
-
-      <p class="text-xs text-gray-400 mt-6">
-        By logging in, you are authenticated through the Philippine government's eGovPH Single Sign-On system.
-        No separate registration needed.
-      </p>
 
       <div class="mt-6 pt-6 border-t border-gray-200">
         <p class="text-sm text-gray-500">Don't need to login?</p>
@@ -41,32 +49,52 @@
 </template>
 
 <script setup lang="ts">
-import { useAuth } from '~/composables/useAuth';
 import { useAuthStore } from '~/stores/auth.store';
 
 definePageMeta({ layout: 'default' });
 
 const route = useRoute();
-const { loginWithEGov } = useAuth();
 const authStore = useAuthStore();
+const exchangeCode = ref('');
+const loading = ref(false);
+const errorMessage = ref('');
 
-// Redirect if already logged in
 onMounted(() => {
   authStore.loadFromStorage();
   if (authStore.isLoggedIn) {
     navigateTo('/');
   }
-});
-
-const errorMessage = computed(() => {
   const error = route.query.error as string;
-  if (error === 'auth_failed') return 'Authentication failed. Please try again.';
-  if (error === 'no_code') return 'No authentication code received. Please try again.';
-  if (error === 'parse_error') return 'Error processing login response.';
-  return '';
+  if (error === 'auth_failed') errorMessage.value = 'Authentication failed. Please try again.';
+  if (error === 'no_code') errorMessage.value = 'No exchange code received.';
 });
 
-function handleLogin() {
-  loginWithEGov();
+async function handleLogin() {
+  if (!exchangeCode.value) return;
+  loading.value = true;
+  errorMessage.value = '';
+
+  try {
+    const { client } = useApi();
+    const { data } = await client.post('/api/auth/callback', {
+      exchange_code: exchangeCode.value,
+    });
+
+    if (data.success) {
+      authStore.setAuth(data.data.token, data.data.user);
+      navigateTo('/');
+    } else {
+      errorMessage.value = data.error?.message || 'Login failed.';
+    }
+  } catch (error: any) {
+    const apiError = error.response?.data?.error;
+    errorMessage.value = apiError?.code === 'EGOV_PARTNER_FORBIDDEN'
+      ? 'eGovPH denied this partner application. Ask the eGov administrator to enable SSO_AUTHENTICATION for this partner.'
+      : apiError?.message || 'Authentication failed. Check your exchange code.';
+  } finally {
+    loading.value = false;
+  }
 }
+
+import { useApi } from '~/composables/useApi';
 </script>
