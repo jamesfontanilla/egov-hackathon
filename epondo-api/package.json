@@ -2,6 +2,7 @@
   "name": "epondo-api",
   "version": "1.0.0",
   "description": "ePondo - Local Governance Financial Compliance & Project Tracking System API",
+  "type": "module",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
